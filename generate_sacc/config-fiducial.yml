@@ -1,10 +1,12 @@
 tjpcov:
-  sacc_file: tmp.fits
+  sacc_file: mock_3x2pt_data_vector_without_cov.sacc
   cosmo: 'set'
   use_mpi: False
+  lmax: 3000
+  lmin: 20
   
   # allowed covariance type: gauss, ng (to be implemented)
-  cov_type: [FourierGaussianNmt] #FourierSSCHaloModel
+  cov_type: [FourierGaussianFsky] #FourierSSCHaloModel
 
   IA: 0.4
 
@@ -21,17 +23,17 @@ tjpcov:
     lens_3: ./lsst_Y1_binary_mask.fits
     lens_4: ./lsst_Y1_binary_mask.fits
 
-  mask_names:
-    source_0: source_0
-    source_1: source_1
-    source_2: source_2
-    source_3: source_3
-    source_4: source_4
-    lens_0: lens_0
-    lens_1: lens_1
-    lens_2: lens_2
-    lens_3: lens_3
-    lens_4: lens_4
+  # mask_names:
+  #   source_0: source_0
+  #   source_1: source_1
+  #   source_2: source_2
+  #   source_3: source_3
+  #   source_4: source_4
+  #   lens_0: lens_0
+  #   lens_1: lens_1
+  #   lens_2: lens_2
+  #   lens_3: lens_3
+  #   lens_4: lens_4
     
   Ngal_source_0: 1.956
   Ngal_source_1: 1.956
@@ -51,6 +53,15 @@ tjpcov:
   sigma_e_source_3: 0.26
   sigma_e_source_4: 0.26
 
+  bias_lens_0: 1.266875325431873
+  bias_lens_1: 1.314054071857109
+  bias_lens_2: 1.3636554550390585
+  bias_lens_3: 1.4140182068853981
+  bias_lens_4: 1.467296807641556
+
+
+
+
 parameters:
   # Not used for while (read by ccl.cosmo):
   Omega_c: 0.255
@@ -65,13 +76,14 @@ parameters:
 # Only required when running the GaussianFsky covariance
 # Note that the fsky calculation for which this term would be required does not work with our chosen a log-linear binning scheme. 
 # For the NaMaster calculation this term is not required as the area is calculated directly from the supplied healpix mask (see create-mask.py)
-#GaussianFsky:
-#  fsky: 0.298
+GaussianFsky:
+ fsky: 0.4347736724601847
   
 # provided the mask and ell binning is the same, the workspaces do not need to be recomputed, 
 # therefore set recompute=False
 # the other covariance workspace settings are based on findings in https://arxiv.org/pdf/2010.14344.pdf
 # and are recommended NaMaster settings (https://github.com/LSSTDESC/NaMaster)
+
 NaMaster:
   module: pymaster
   f:

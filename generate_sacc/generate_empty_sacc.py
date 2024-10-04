@@ -13,11 +13,9 @@ import pymaster as nmt
 import os
 import h5py
 
-nz_file = sys.argv[1]
-output_file = sys.argv[2]
 
 # Select survey
-survey = "Y1"
+output_file = "mock_3x2pt_data_vector_without_cov.sacc"
 
 # The namaster workspace depends only on the mask which we take to be the same for each tomographic bin,
 # this is the slow step so only do once for a given mask, if the healpix mask changes this will need to be recomputed,
@@ -25,23 +23,49 @@ survey = "Y1"
 compute_workspace = True
 
 workspace_directory = "./workspace"
-mask_name = f"lsst_{survey}_binary_mask"
 
+lmax = 3000
 
-with h5py.File(nz_file, "r") as f:
-    z = f["Z"][:]
-    nz = f["DATA"][:]
-    num_z_bins = nz.shape[0]
+nz_source_file = "SOURCE.HDF5"
+nz_lens_file = "LENS.HDF5"
 
-if survey == "Y1":
-    n_eff_tot = 9.78  # in per sqarcmin
-elif survey == "Y10":
-    n_eff_tot = 24.4  # in per sqarcmin
-else:
-    raise ValueError("survey not recognised")
+def load_nz(nz_file):
+    with h5py.File(nz_file, "r") as f:
+        z = f["Z"][:]
+        nz = f["DATA"][:]
+        num_z_bins = nz.shape[0]
+    return z, nz, num_z_bins
+
+z_source, nz_source, num_z_bins_source = load_nz(nz_source_file)
+z_lens, nz_lens, num_z_bins_lens = load_nz(nz_lens_file)
+
+z_means_source = []
+for i in range(num_z_bins_source):
+    z_mean_source = np.sum(z_source * nz_source[i, :]) / np.sum(nz_source[i, :])
+    z_means_source.append(z_mean_source)
+
+z_means_lens = []
+for i in range(num_z_bins_lens):
+    z_mean_lens = np.sum(z_lens * nz_lens[i, :]) / np.sum(nz_lens[i, :])
+    z_means_lens.append(z_mean_lens)
+
+print(z_means_source)
+print(z_means_lens)
+
+galaxy_biases = [1.2** (1+z_means_lens[i]) for i in range(num_z_bins_lens)]
+print(galaxy_biases)
+
+# sys.exit(0)
+
+n_eff_source_total = 9.78  # in per sqarcmin
+n_eff_lens = np.array([2.25, 3.098, 3.071, 2.595, 1.998])
+
+assert len(n_eff_lens) == num_z_bins_lens
+
 
 # WARNING, TJPCov is expecting the neff in units of per sq radian
-n_eff_tot /= (np.pi / (180 * 60)) ** 2.0  # into radians
+n_eff_source_total /= (np.pi / (180 * 60)) ** 2.0  # into radians
+n_eff_lens = n_eff_lens / (np.pi / (180 * 60)) ** 2.0  # into radians
 
 # intrinsic ellipticity disperson
 sigma_e = 0.26
@@ -51,16 +75,9 @@ ell_min = 20
 ell_max = 5000
 num_ell_bins = 24
 
-
-# read in mask
-mask = hp.read_map(
-    f"./lsst_{survey}_binary_mask.fits", verbose=False
-)
-nside = hp.npix2nside(mask.size)
-f_sky = mask[mask == 1.0].size / mask.size
-
-n_eff = np.array([n_eff_tot / num_z_bins] * num_z_bins)  # n_eff per tomographic bin
-n_ell = sigma_e**2.0 / n_eff
+n_eff_source = np.array([n_eff_source_total / num_z_bins_source] * num_z_bins_source)  # n_eff per tomographic bin
+n_ell_source = sigma_e**2.0 / n_eff_source
+n_ell_lens = 1 / n_eff_lens
 
 
 # set-up for sacc file and CCL
@@ -76,57 +93,50 @@ cosmo = ccl.Cosmology(
 
 
 
-wl = []  # add tracer for ccl
-for i in range(num_z_bins):
-    s.add_tracer("NZ", f"source_{i}", z, nz[i, :])
-    wl.append(
+source_tracers = []  # add tracer for ccl
+for i in range(num_z_bins_source):
+    s.add_tracer("NZ", f"source_{i}", z_source, nz_source[i, :])
+    source_tracers.append(
         ccl.tracers.WeakLensingTracer(
-            cosmo, dndz=[z, nz[i, :]], has_shear=True, ia_bias=None, use_A_ia=True
+            cosmo, dndz=[z_source, nz_source[i, :]], has_shear=True, ia_bias=None, use_A_ia=True
         )
     )
-    tr = s.tracers[f"source_{i}"]
-    # Note this differs from A9 in Prat and Zuntz et al., but is the appropriate value for TJPCov - Alonso private communication
-    tr.metadata["n_ell_coupled"] = f_sky * n_ell[i]
 
 
-ell = np.arange(3 * nside, dtype="int32")
-cl = np.zeros((num_z_bins, num_z_bins, ell.size))
+lens_tracers = []
+for i in range(num_z_bins_lens):
+    s.add_tracer("NZ", f"lens_{i}", z_lens, nz_lens[i, :])
+    lens_tracers.append(
+        ccl.NumberCountsTracer(
+            cosmo, dndz=[z_lens, nz_lens[i, :]], bias=(z_lens, np.repeat(galaxy_biases[i], z_lens.size)), has_rsd=False)
+    )
+
+
+
+
+ell = np.arange(ell_max, dtype="int32")
 CEE = sacc.standard_types.galaxy_shear_cl_ee
+CPP = sacc.standard_types.galaxy_density_cl
+CPE = sacc.standard_types.galaxy_shearDensity_cl_e
 
 
 # NaMaster friendly ell binning for TJPCov to work
 bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), num=num_ell_bins + 1)
-bpws = np.zeros(ell.size) - 1.0
-weights = np.ones(ell.size)
 w = np.zeros((ell.size, num_ell_bins))
-for nb in range(num_ell_bins):
-    inbin = (ell <= bin_edges[nb + 1]) & (ell > bin_edges[nb])
-    bpws[inbin] = nb
-    norm_denom = np.sum(weights[inbin])
-    weights[inbin] /= norm_denom
-    w[inbin, nb] = 1.0
-b = nmt.NmtBin(bpws=bpws, ells=ell, weights=weights)
-bin_ell = b.get_effective_ells()
+for b in range(num_ell_bins):
+    in_bin = (ell > bin_edges[b]) & (ell <= bin_edges[b + 1])
+    w[in_bin, b] = 1.0
+    w[:, b] /= w[:, b].sum()
+
+bin_ell = 0.5 * (bin_edges[1:] * bin_edges[:-1])
+
 win = sacc.windows.BandpowerWindow(ell, w)
 
-# loop over tomographic bins bins
-for j in range(num_z_bins):
-    for k in range(num_z_bins):
-        print(f"j={j}, k={k}")
-        cl[j, k, :] = ccl.angular_cl(cosmo, wl[j], wl[k], ell)
-        cl_bin = b.bin_cell(np.array([cl[j, k, :]]))[
-            0
-        ]  # arrays are shape (1,num_ell_bins) so need [0]
-        nl_bin = b.bin_cell(np.array([np.ones(3 * nside) * n_ell[j]]))[0]
-
-        if compute_workspace:
-            if (j == k) & (j == 0):
-                f = nmt.NmtField(mask, [mask * 0.0, mask * 0.0])
-                w = nmt.NmtWorkspace()
-                w.compute_coupling_matrix(f, f, b)
-                w.write_to(
-                    f"{workspace_directory}/workspace_lsst_{survey}_binary_mask.fits"
-                )
+# Shear-shear
+for j in range(num_z_bins_source):
+    for k in range(num_z_bins_source):
+        cl = ccl.angular_cl(cosmo, source_tracers[j], source_tracers[k], ell)
+        cl_bin = win.weight.T @ cl
 
         for n in range(num_ell_bins):
             s.add_data_point(
@@ -137,7 +147,52 @@ for j in range(num_z_bins):
                 window=win,
                 i=j,
                 j=k,
-                n_ell=nl_bin[n],
                 window_ind=n,
             )
+
+# Density
+for j in range(num_z_bins_lens):
+    # only do auto-correlations for j
+    k = j
+    cl = ccl.angular_cl(cosmo, lens_tracers[j], lens_tracers[k], ell)
+    cl_bin = win.weight.T @ cl
+
+    for n in range(num_ell_bins):
+        s.add_data_point(
+            CPP,
+            (f"lens_{j}", f"lens_{k}"),
+            cl_bin[n],
+            ell=bin_ell[n],
+            window=win,
+            i=j,
+            j=k,
+            window_ind=n,
+        )
+
+# GGL
+for j in range(num_z_bins_source):
+    for k in range(num_z_bins_lens):
+        # decide whether to skip this bin or not
+        if z_means_source[j] < z_means_lens[k]:
+            print("SKIPPING", j, k)
+            continue
+
+        cl = ccl.angular_cl(cosmo, source_tracers[j], lens_tracers[k], ell)
+        cl_bin = win.weight.T @ cl
+
+        for n in range(num_ell_bins):
+            s.add_data_point(
+                CPE,
+                (f"source_{j}", f"lens_{k}"),
+                cl_bin[n],
+                ell=bin_ell[n],
+                window=win,
+                i=j,
+                j=k,
+                window_ind=n,
+            )
+
+
+
+
 s.save_fits(output_file, overwrite=True)
