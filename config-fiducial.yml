@@ -1,0 +1,159 @@
+tjpcov:
+  sacc_file: tmp.fits
+  cosmo: 'set'
+  use_mpi: False
+  
+  # allowed covariance type: gauss, ng (to be implemented)
+  cov_type: [FourierGaussianNmt] #FourierSSCHaloModel
+
+  IA: 0.4
+
+  outdir: ./
+  mask_file:
+    source_0: ./lsst_Y1_binary_mask.fits
+    source_1: ./lsst_Y1_binary_mask.fits
+    source_2: ./lsst_Y1_binary_mask.fits
+    source_3: ./lsst_Y1_binary_mask.fits
+    source_4: ./lsst_Y1_binary_mask.fits
+    lens_0: ./lsst_Y1_binary_mask.fits
+    lens_1: ./lsst_Y1_binary_mask.fits
+    lens_2: ./lsst_Y1_binary_mask.fits
+    lens_3: ./lsst_Y1_binary_mask.fits
+    lens_4: ./lsst_Y1_binary_mask.fits
+
+  mask_names:
+    source_0: source_0
+    source_1: source_1
+    source_2: source_2
+    source_3: source_3
+    source_4: source_4
+    lens_0: lens_0
+    lens_1: lens_1
+    lens_2: lens_2
+    lens_3: lens_3
+    lens_4: lens_4
+    
+  Ngal_source_0: 1.956
+  Ngal_source_1: 1.956
+  Ngal_source_2: 1.956
+  Ngal_source_3: 1.956
+  Ngal_source_4: 1.956
+
+  Ngal_lens_0: 2.25
+  Ngal_lens_1: 3.098
+  Ngal_lens_2: 3.071
+  Ngal_lens_3: 2.595
+  Ngal_lens_4: 1.998
+
+  sigma_e_source_0: 0.26
+  sigma_e_source_1: 0.26
+  sigma_e_source_2: 0.26
+  sigma_e_source_3: 0.26
+  sigma_e_source_4: 0.26
+
+parameters:
+  # Not used for while (read by ccl.cosmo):
+  Omega_c: 0.255
+  Omega_b: 0.0437
+  h: 0.715
+  n_s: 0.97
+  sigma8: 0.8
+  w0: -1
+  wa: 0
+  transfer_function: 'boltzmann_camb'
+
+# Only required when running the GaussianFsky covariance
+# Note that the fsky calculation for which this term would be required does not work with our chosen a log-linear binning scheme. 
+# For the NaMaster calculation this term is not required as the area is calculated directly from the supplied healpix mask (see create-mask.py)
+#GaussianFsky:
+#  fsky: 0.298
+  
+# provided the mask and ell binning is the same, the workspaces do not need to be recomputed, 
+# therefore set recompute=False
+# the other covariance workspace settings are based on findings in https://arxiv.org/pdf/2010.14344.pdf
+# and are recommended NaMaster settings (https://github.com/LSSTDESC/NaMaster)
+NaMaster:
+  module: pymaster
+  f:
+    n_iter: 0
+    # lmax_sht: -1
+  w:
+    lmax_mask: -1
+    l_toeplitz: -1
+    l_exact: -1
+    dl_band: -1
+    # n_iter: 3
+    recompute: False
+  cw:
+    l_toeplitz: 2750
+    l_exact: 1000
+    dl_band: 2000
+    # n_iter: 3
+    recompute: False
+
+cache:
+  'workspaces':
+    '22':
+      !!python/tuple [source_0, source_0]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, source_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, source_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_3, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_3, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_4, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+    '00':
+      !!python/tuple [lens_0, lens_0]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, lens_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, lens_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_3, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_3, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_4, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+    '02':
+      !!python/tuple [lens_0, source_0]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, source_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_0, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, source_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_1, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, source_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_2, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_3, source_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_3, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [lens_4, source_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+    '20':
+      !!python/tuple [source_0, lens_0]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, lens_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_0, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, lens_1]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_1, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, lens_2]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_2, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_3, lens_3]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_3, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
+      !!python/tuple [source_4, lens_4]: ./workspace/workspace_lsst_Y1_binary_mask.fits
