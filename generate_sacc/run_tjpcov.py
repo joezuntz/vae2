@@ -1,5 +1,6 @@
 from tjpcov.covariance_calculator import CovarianceCalculator
-
+import sacc
+import numpy as np
 
 if __name__ == "__main__":
     import argparse
@@ -20,3 +21,17 @@ if __name__ == "__main__":
 
     cov = CovarianceCalculator(args.INPUT)
     cov.create_sacc_cov(args.output)
+
+
+    s = sacc.Sacc.load_fits(args.output)
+    C = s.covariance.dense
+    try:
+        np.linalg.cholesky(C)
+    except np.linalg.LinAlgError:
+        print("Covariance matrix is not positive definite")
+        d = C.diagonal()
+        print(d.min())
+        C[np.diag_indices_from(C)] *= (1 + 1e-4)
+        np.linalg.cholesky(C)
+        s.add_covariance(C, overwrite=True)
+        s.save_fits(args.output, overwrite=True)

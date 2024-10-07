@@ -4,13 +4,9 @@
 # the cosmic shear power spectra saved in this file IS NOT the mock spectra used in analysis, this is only used for making the covariance with TJPCov
 
 
-import sys
 import numpy as np
 import pyccl as ccl
 import sacc
-import healpy as hp
-import pymaster as nmt
-import os
 import h5py
 
 
@@ -24,7 +20,6 @@ compute_workspace = True
 
 workspace_directory = "./workspace"
 
-lmax = 3000
 
 nz_source_file = "SOURCE.HDF5"
 nz_lens_file = "LENS.HDF5"
@@ -55,7 +50,7 @@ print(z_means_lens)
 galaxy_biases = [1.2** (1+z_means_lens[i]) for i in range(num_z_bins_lens)]
 print(galaxy_biases)
 
-# sys.exit(0)
+
 
 n_eff_source_total = 9.78  # in per sqarcmin
 n_eff_lens = np.array([2.25, 3.098, 3.071, 2.595, 1.998])
@@ -72,7 +67,7 @@ sigma_e = 0.26
 
 # set-up ell binning, use logarithmic bins
 ell_min = 20
-ell_max = 5000
+ell_max = 3000
 num_ell_bins = 24
 
 n_eff_source = np.array([n_eff_source_total / num_z_bins_source] * num_z_bins_source)  # n_eff per tomographic bin
@@ -89,8 +84,16 @@ cosmo = ccl.Cosmology(
     n_s=0.97,
     sigma8=0.8,
     transfer_function="boltzmann_camb",
+    matter_power_spectrum="camb",
+    extra_parameters={
+        "camb": {
+            "halofit_version": "mead2020_feedback", 
+             "HMCode_logT_AGN": 8.0
+        }
+                      
+    }
 )
-
+print(cosmo)
 
 
 source_tracers = []  # add tracer for ccl
@@ -98,7 +101,7 @@ for i in range(num_z_bins_source):
     s.add_tracer("NZ", f"source_{i}", z_source, nz_source[i, :])
     source_tracers.append(
         ccl.tracers.WeakLensingTracer(
-            cosmo, dndz=[z_source, nz_source[i, :]], has_shear=True, ia_bias=None, use_A_ia=True
+            cosmo, dndz=[z_source, nz_source[i, :]], ia_bias=None, use_A_ia=False
         )
     )
 
@@ -122,20 +125,21 @@ CPE = sacc.standard_types.galaxy_shearDensity_cl_e
 
 # NaMaster friendly ell binning for TJPCov to work
 bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), num=num_ell_bins + 1)
+print(bin_edges)
 w = np.zeros((ell.size, num_ell_bins))
 for b in range(num_ell_bins):
     in_bin = (ell > bin_edges[b]) & (ell <= bin_edges[b + 1])
     w[in_bin, b] = 1.0
     w[:, b] /= w[:, b].sum()
 
-bin_ell = 0.5 * (bin_edges[1:] * bin_edges[:-1])
+bin_ell = 0.5 * (bin_edges[1:] + bin_edges[:-1])
 
 win = sacc.windows.BandpowerWindow(ell, w)
 
 # Shear-shear
 for j in range(num_z_bins_source):
     for k in range(num_z_bins_source):
-        cl = ccl.angular_cl(cosmo, source_tracers[j], source_tracers[k], ell)
+        cl = cosmo.angular_cl(source_tracers[j], source_tracers[k], ell)
         cl_bin = win.weight.T @ cl
 
         for n in range(num_ell_bins):
@@ -150,11 +154,12 @@ for j in range(num_z_bins_source):
                 window_ind=n,
             )
 
+
 # Density
 for j in range(num_z_bins_lens):
     # only do auto-correlations for j
     k = j
-    cl = ccl.angular_cl(cosmo, lens_tracers[j], lens_tracers[k], ell)
+    cl = cosmo.angular_cl(lens_tracers[j], lens_tracers[k], ell)
     cl_bin = win.weight.T @ cl
 
     for n in range(num_ell_bins):
@@ -177,7 +182,7 @@ for j in range(num_z_bins_source):
             print("SKIPPING", j, k)
             continue
 
-        cl = ccl.angular_cl(cosmo, source_tracers[j], lens_tracers[k], ell)
+        cl = cosmo.angular_cl(source_tracers[j], lens_tracers[k], ell)
         cl_bin = win.weight.T @ cl
 
         for n in range(num_ell_bins):
