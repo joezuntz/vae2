@@ -1,0 +1,10 @@
+#!/bin/bash
+#SBATCH -N 2
+#SBATCH -C cpu
+#SBATCH --qos=regular
+#SBATCH --time=12:00:00
+
+source /dvs_ro/cfs/projectdirs/des/zuntz/cosmosis-global/setup-cosmosis3 3.11.2
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/global/common/software/nersc/pe/conda-envs/24.1.0/python-3.11/nersc-python/lib
+export OMP_NUM_THREADS=4 
+srun -u -n 64 -c 4 --cpu_bind=cores cosmosis params.ini -p runtime.sampler=nautilus --mpi
