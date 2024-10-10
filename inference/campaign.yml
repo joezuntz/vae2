@@ -1,0 +1,35 @@
+output_dir: "./output"
+
+runs:
+  - name: 3x2pt
+    base: params.ini
+
+  - name: shear
+    parent: 3x2pt
+    pipeline:
+    - delete lens_photoz_bias
+    params:
+    - delete pk_to_cl.fast-lingal-shear-ia
+    - delete pk_to_cl.lingal-lingal
+    - sacc_like.data_sets = galaxy_shear_cl_ee
+    values:
+    - delete lens_photoz_errors
+    - delete bias_lens
+
+  - name: clustering
+    parent: 3x2pt
+    pipeline:
+    - delete source_photoz_bias
+    params:
+    - delete pk_to_cl.fast-shear-shear-ia
+    - delete pk_to_cl.fast-lingal-shear-ia
+    - sacc_like.data_sets = galaxy_density_cl
+    values:
+    - delete source_photoz_errors
+    - delete intrinsic_alignment_parameters
+  
+  - name: 2x2pt
+    parent: 3x2pt
+    params:
+    - delete pk_to_cl.fast-shear-shear-ia
+    - sacc_like.data_sets = galaxy_density_cl galaxy_shearDensity_cl_e
