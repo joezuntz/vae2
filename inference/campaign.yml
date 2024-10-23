@@ -1,23 +1,21 @@
 output_dir: "./output"
 
-runs:
-  - name: 3x2pt
-    base: params.ini
-
-  - name: shear
-    parent: 3x2pt
+components:
+  no_lens:
+    # remove anything lens-related
     pipeline:
     - delete lens_photoz_bias
+    - delete correlated_dz_lens
     params:
     - delete pk_to_cl.fast-lingal-shear-ia
     - delete pk_to_cl.lingal-lingal
-    - sacc_like.data_sets = galaxy_shear_cl_ee
     values:
     - delete lens_photoz_errors
+    - delete lens_dz_uncor
     - delete bias_lens
 
-  - name: clustering
-    parent: 3x2pt
+  no_source:
+    # remove anything source-related
     pipeline:
     - delete source_photoz_bias
     params:
@@ -27,9 +25,95 @@ runs:
     values:
     - delete source_photoz_errors
     - delete intrinsic_alignment_parameters
-  
+
+
+  source_vae:
+    # replace the source pz-related components with vae
+    pipeline:
+    - after extrapolate source_vae
+    - delete correlated_dz_source
+    - delete source_photoz_bias
+    values:
+    - delete source_photoz_errors
+    - delete source_dz_uncor
+    - source_vae.latent_1 = -3.0  0.0  3.0
+    - source_vae.latent_2 = -3.0  0.0  3.0
+    - source_vae.latent_3 = -3.0  0.0  3.0
+    - source_vae.latent_4 = -3.0  0.0  3.0
+    - source_vae.latent_5 = -3.0  0.0  3.0
+
+  lens_vae:
+    # replace the lens pz-related components with vae
+    pipeline:
+    - after extrapolate lens_vae
+    - delete correlated_dz_lens
+    - delete lens_photoz_bias
+    values:
+    - delete lens_photoz_errors
+    - delete lens_dz_uncor
+    - lens_vae.latent_1 = -3.0  0.0  3.0
+    - lens_vae.latent_2 = -3.0  0.0  3.0
+    - lens_vae.latent_3 = -3.0  0.0  3.0
+    - lens_vae.latent_4 = -3.0  0.0  3.0
+    - lens_vae.latent_5 = -3.0  0.0  3.0
+
+
+
+
+runs:
+  - name: 3x2pt
+    base: params.ini
+
+  - name: 3x2pt_vae
+    parent: 3x2pt
+    components:
+    - source_vae
+    - lens_vae
+    pipeline:
+    - delete sacc_nz
+
+
+  - name: shear
+    parent: 3x2pt
+    components:
+    - no_lens
+    params:
+    - sacc_like.data_sets = galaxy_shear_cl_ee
+
+
+  - name: shear_vae
+    parent: shear
+    components:
+    - source_vae
+    pipeline:
+    - delete sacc_nz
+
+
+  - name: clustering
+    parent: 3x2pt
+    components:
+    - no_source
+
+
+  - name: clustering_vae
+    parent: clustering
+    components:
+    - lens_vae
+    pipeline:
+    - delete sacc_nz
+
+
   - name: 2x2pt
     parent: 3x2pt
     params:
     - delete pk_to_cl.fast-shear-shear-ia
     - sacc_like.data_sets = galaxy_density_cl galaxy_shearDensity_cl_e
+
+
+  - name: 2x2pt_vae
+    parent: 2x2pt
+    components:
+    - source_vae
+    - lens_vae
+    pipeline:
+    - delete sacc_nz
