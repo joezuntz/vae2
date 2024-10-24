@@ -80,25 +80,10 @@ runs:
     params:
     - sacc_like.data_sets = galaxy_shear_cl_ee
 
-
   - name: shear_vae
     parent: shear
     components:
     - source_vae
-    pipeline:
-    - delete sacc_nz
-
-
-  - name: clustering
-    parent: 3x2pt
-    components:
-    - no_source
-
-
-  - name: clustering_vae
-    parent: clustering
-    components:
-    - lens_vae
     pipeline:
     - delete sacc_nz
 

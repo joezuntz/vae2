@@ -8,9 +8,13 @@ tjpcov:
   # allowed covariance type: gauss, ng (to be implemented)
   cov_type: [FourierGaussianFsky] #FourierSSCHaloModel
 
+
+  # not sure if this is right?
   IA: 0.4
 
   outdir: ./
+
+  # might be able to comment this out as we are using f_sky?
   mask_file:
     source_0: ./lsst_Y1_binary_mask.fits
     source_1: ./lsst_Y1_binary_mask.fits
@@ -84,6 +88,9 @@ GaussianFsky:
 # the other covariance workspace settings are based on findings in https://arxiv.org/pdf/2010.14344.pdf
 # and are recommended NaMaster settings (https://github.com/LSSTDESC/NaMaster)
 
+
+# might be able to comment this out as we are using f_sky?
+
 NaMaster:
   module: pymaster
   f:
@@ -103,6 +110,7 @@ NaMaster:
     # n_iter: 3
     recompute: False
 
+# might be able to comment this out as we are using f_sky?
 cache:
   'workspaces':
     '22':

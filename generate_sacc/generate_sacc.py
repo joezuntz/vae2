@@ -13,13 +13,6 @@ import h5py
 # Select survey
 output_file = "mock_3x2pt_data_vector_without_cov.sacc"
 
-# The namaster workspace depends only on the mask which we take to be the same for each tomographic bin,
-# this is the slow step so only do once for a given mask, if the healpix mask changes this will need to be recomputed,
-# the workspace is also a large file so use $PSCRATCH on NERSC.
-compute_workspace = True
-
-workspace_directory = "./workspace"
-
 
 nz_source_file = "SOURCE.HDF5"
 nz_lens_file = "LENS.HDF5"
@@ -116,8 +109,10 @@ for i in range(num_z_bins_lens):
 
 
 
-
+# dense ell - unbinned, just all integers up to ell_max
 ell = np.arange(ell_max, dtype="int32")
+
+# type codes to tell sacc what kinds of data we are using
 CEE = sacc.standard_types.galaxy_shear_cl_ee
 CPP = sacc.standard_types.galaxy_density_cl
 CPE = sacc.standard_types.galaxy_shearDensity_cl_e
@@ -126,6 +121,9 @@ CPE = sacc.standard_types.galaxy_shearDensity_cl_e
 # NaMaster friendly ell binning for TJPCov to work
 bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), num=num_ell_bins + 1)
 print(bin_edges)
+
+# window function for each bin c^ij_b = sum_ell w^ij_ell c_ell
+# our windows are just top hat functions
 w = np.zeros((ell.size, num_ell_bins))
 for b in range(num_ell_bins):
     in_bin = (ell > bin_edges[b]) & (ell <= bin_edges[b + 1])
@@ -134,14 +132,19 @@ for b in range(num_ell_bins):
 
 bin_ell = 0.5 * (bin_edges[1:] + bin_edges[:-1])
 
+# window function to save in sacc
 win = sacc.windows.BandpowerWindow(ell, w)
 
 # Shear-shear
 for j in range(num_z_bins_source):
     for k in range(num_z_bins_source):
+        # generate dense c_ell (on all ell values)
         cl = cosmo.angular_cl(source_tracers[j], source_tracers[k], ell)
+
+        # convert to binned c_ell
         cl_bin = win.weight.T @ cl
 
+        # add all data points to sacc file with metadata
         for n in range(num_ell_bins):
             s.add_data_point(
                 CEE,
@@ -157,6 +160,7 @@ for j in range(num_z_bins_source):
 
 # Density
 for j in range(num_z_bins_lens):
+    # THINK ABOUT THIS! Do we want to do this?
     # only do auto-correlations for j
     k = j
     cl = cosmo.angular_cl(lens_tracers[j], lens_tracers[k], ell)
